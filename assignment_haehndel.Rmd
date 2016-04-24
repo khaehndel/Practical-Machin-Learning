@@ -1,0 +1,115 @@
+---
+title: "Practical Machine Learning Assignment"
+output: html_document
+---
+
+## Assignment Summary [From Coursera]
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement - a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+
+## Assignment Goals 
+
+The goal of the assingment is to predict the manner in which candidates did certain exercises. This is described via the "classe" variable in the training set. The following assignment will decribe the steps in building a predictive model, evaluating it via a test set and the expected out of sample error resulting from such a model. This model will then be further applied for 20 different test cases. 
+
+## Loading Relevant Packages
+
+The assignment requires a range of different packages for training and testing of the machine learning algorithms. These packages are the following:
+
+```{r}
+library(caret)
+library(randomForest)
+library(rpart)
+library(rpart.plot)
+library(corrplot)
+
+```
+## Gather Data
+
+The data has been saved locally on the desktop. Hence reading the data will be completed via the read.csv command. Alternatively one can download the data directly from the source url. The data will then pass through a series of operations to clean it and make it usuable for the machine learning algorithms.  
+
+```{r}
+setwd("C:/Users/kh/Desktop/Machine_Learning/Assignment/")
+train_data <-read.csv("pml-training.csv")
+train_data_classe <- train_data$classe
+train_data <- train_data[,colSums(is.na(train_data))==0]
+train_data <- train_data[, !grepl("^X|timestamp|window", names(train_data))]
+train_data <- train_data[, sapply(train_data, is.numeric)]
+train_data$classe <- train_data_classe
+test_data <-read.csv("pml-testing.csv")
+test_data_classe <- test_data$classe
+test_data <- test_data[,colSums(is.na(test_data))==0]
+test_data <- test_data[, !grepl("^X|timestamp|window", names(test_data))]
+test_data <- test_data[, sapply(test_data, is.numeric)]
+test_data$classe <- test_data_classe
+
+
+```
+
+## Seperation of Training and Testing sets within Training Set
+
+Leaving the test_data as a final validation mechanism (also as a means of out of sample evaluation), the training data set is partitioned into two sets with 60% used for training the machine learning algorithm and 40% used for validation.
+
+```{r}
+inTrain <- createDataPartition(y=train_data$classe, p=0.6, list=FALSE)
+training <- train_data[inTrain,]
+testing <- train_data[-inTrain,]
+dim(training)
+dim(testing)
+
+```
+
+## Model The Data Using Tree Method
+
+
+Once the data is cleaned a simple tree method can be used as a training mechanism for the data. This can be seen below. 
+
+
+```{r}
+mod_TM <- rpart(classe~.,data=training, method="class")
+plot(mod_TM, uniform=TRUE, main="Tree Method")
+text(mod_TM, use.n=TRUE, all=TRUE, cex=.6)
+post(mod_TM)
+```
+
+Using this Tree method the model can be applied to the test data for prediction evaulation. This is shown below whereby a confusion matrix is used estimate performance. 
+
+```{r}
+predict_TM <- predict(mod_TM, testing, type="class")
+confusionMatrix(predict_TM, testing$classe)
+```
+
+### Summary of Performance
+
+The Tree method model produced an accurarcy of 0.7548 with a p-value of 2.2e-16 and kappa of 0.6892. This shows positive results for the given assingment but potentially can be improved. Typically tree models tend to be over-fitted on the training phase and hence under perform on the testing set. A random forrest could be a solution to this problem and will be evaluated in the next section. 
+
+## Model The Data Using Random Forrest Method
+
+The random forrest method is a robust method to remove unintentional over-fitting of the training data whilst improving accuracy on out of sample data. In the following section a random forest model will be deployed. 
+
+```{r}
+mod_RF <- randomForest(classe~., data=training)
+mod_RF
+
+```
+
+Using this random forrest model a prediction on the test set can be made. Here the confusion matrix is also implemented for performance evaluation 
+
+```{r}
+predict_RF <- predict(mod_RF, testing, type="class")
+confusionMatrix(predict_RF, testing$classe)
+```
+
+
+### Summary of Performance
+
+The random forrest method produced an accurarcy of 0.9936 with a p-value of 2.2e-16 and kappa of 0.9919. This is a significant improvement on the tree model. Hence the random forrest model will be used to predict the assignment objectives. This is shown below:
+
+## Assignment Predictions
+
+```{r}
+answers <- predict(mod_RF, test_data[, -length(names(test_data))])
+answers
+
+```
+
+
